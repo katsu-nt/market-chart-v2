@@ -15,8 +15,5 @@ def startup_event():
     start_scheduler()
     logger.info("✅ App started")
 
-@app.get("/")
-def read_root():
-    return {"message": "Gold price tracking app is running"}
 
 app.include_router(gold_prices.router)

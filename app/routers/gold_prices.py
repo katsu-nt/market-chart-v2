@@ -4,8 +4,10 @@ from datetime import date, timedelta
 from fastapi.responses import JSONResponse
 from app.database import get_db
 from app.models.gold import GoldPrice, GoldType
+from typing import Optional
 
 router = APIRouter(prefix="/gold", tags=["Gold Prices"])
+
 
 def get_days_range(option: str) -> timedelta:
     mapping = {
@@ -18,16 +20,21 @@ def get_days_range(option: str) -> timedelta:
     }
     return timedelta(days=mapping.get(option, 7))
 
+
 @router.get("/chart")
 def get_gold_chart(
-    gold_types: list[str] = Query(..., description="Mã loại vàng, ví dụ: sjc, pnj_mieng"),
+    gold_types: Optional[list[str]] = Query(None, description="Mã loại vàng, ví dụ: sjc, pnj_mieng"),
     range: str = Query("30d", description="Khoảng thời gian: 7d, 30d, 6m, 1y, 5y, all"),
     db: Session = Depends(get_db)
 ):
+    if gold_types is None or len(gold_types) == 0:
+        gold_types = ["sjc"]
+
     end_date = date.today()
     start_date = end_date - get_days_range(range)
 
     results = {}
+
     for code in gold_types:
         gold_type = db.query(GoldType).filter_by(code=code).first()
         if not gold_type:
@@ -53,9 +60,17 @@ def get_gold_chart(
             if p.date not in daily_latest or p.timestamp > daily_latest[p.date].timestamp:
                 daily_latest[p.date] = p
 
+        sorted_items = sorted(daily_latest.items())
+        if len(sorted_items) < 7:
+            return JSONResponse(status_code=204, content={
+                "status": "no_data",
+                "message": f"Not enough data to build chart for '{code}' (found {len(sorted_items)} days)",
+                "data": None
+            })
+
         results[code] = [
             {"date": d.isoformat(), "price": float(p.sell_price)}
-            for d, p in sorted(daily_latest.items())
+            for d, p in sorted_items
         ]
 
     return {
@@ -63,6 +78,7 @@ def get_gold_chart(
         "message": "Chart data fetched successfully",
         "data": results
     }
+
 
 @router.get("/table")
 def get_gold_table(
