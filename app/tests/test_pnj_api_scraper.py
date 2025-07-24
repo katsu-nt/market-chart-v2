@@ -3,7 +3,6 @@ import os
 from decimal import Decimal
 import pytest
 
-# Thêm app/ vào sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from scrapers.pnj_api_scraper import fetch_pnj_history

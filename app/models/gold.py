@@ -6,9 +6,9 @@ class GoldType(Base):
     __tablename__ = "gold_types"
 
     id = Column(Integer, primary_key=True)
-    code = Column(String, unique=True, nullable=False)  # ví dụ: "pnj_mieng"
-    name = Column(String, nullable=False)               # mô tả: "PNJ vàng miếng"
-    source = Column(String, nullable=False)             # nguồn: "pnj"
+    code = Column(String, unique=True, nullable=False) 
+    name = Column(String, nullable=False)              
+    source = Column(String, nullable=False)             
 
     prices = relationship("GoldPrice", back_populates="gold_type")
 
@@ -17,8 +17,8 @@ class Unit(Base):
     __tablename__ = "units"
 
     id = Column(Integer, primary_key=True)
-    code = Column(String, unique=True, nullable=False)  # ví dụ: "tael"
-    name = Column(String, nullable=False)               # ví dụ: "Chỉ"
+    code = Column(String, unique=True, nullable=False)  
+    name = Column(String, nullable=False)               
 
     prices = relationship("GoldPrice", back_populates="unit")
 
@@ -27,8 +27,8 @@ class Location(Base):
     __tablename__ = "locations"
 
     id = Column(Integer, primary_key=True)
-    code = Column(String, unique=True, nullable=False)  # ví dụ: "hcm"
-    name = Column(String, nullable=False)               # ví dụ: "TP Hồ Chí Minh"
+    code = Column(String, unique=True, nullable=False) 
+    name = Column(String, nullable=False)              
 
     prices = relationship("GoldPrice", back_populates="location")
 
@@ -38,7 +38,7 @@ class GoldPrice(Base):
 
     id = Column(Integer, primary_key=True)
     timestamp = Column(DateTime, nullable=False)
-    date = Column(Date, nullable=False)  # để query nhanh theo ngày
+    date = Column(Date, nullable=False)  
     buy_price = Column(Numeric, nullable=False)
     sell_price = Column(Numeric, nullable=False)
 

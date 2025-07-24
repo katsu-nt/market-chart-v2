@@ -37,7 +37,7 @@ def insert_gold_prices_for_date(date_str: str):
             ).first()
 
             if exists:
-                continue  # tránh trùng lặp
+                continue  
 
             price = GoldPrice(
                 timestamp=datetime.fromisoformat(item["timestamp"]),

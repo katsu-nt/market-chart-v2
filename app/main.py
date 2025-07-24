@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from app.scheduler import start_scheduler
 from app.routers import gold_prices
 from app.utils.logger import get_logger
-from app.database import Base, engine  # ✅ Thêm phần này để tạo bảng
+from app.database import Base, engine 
 
 app = FastAPI()
 logger = get_logger(__name__)
@@ -14,6 +14,5 @@ def startup_event():
 
     start_scheduler()
     logger.info("✅ App started")
-
 
 app.include_router(gold_prices.router)
