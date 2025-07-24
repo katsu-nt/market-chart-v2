@@ -28,4 +28,4 @@ def test_bulk_import_pnj():
 
 if __name__ == "__main__":
     # chạy thật: cả năm 2016
-    bulk_import_pnj(date(2021, 1, 1), date(2022, 7, 24))
+    bulk_import_pnj(date(2021, 1, 1), date(2025, 7, 24))
