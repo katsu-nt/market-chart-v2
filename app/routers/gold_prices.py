@@ -9,29 +9,18 @@ from typing import Optional
 router = APIRouter(prefix="/gold", tags=["Gold Prices"])
 
 
-def get_days_range(option: str) -> timedelta:
-    mapping = {
-        "7d": 7,
-        "30d": 30,
-        "6m": 180,
-        "1y": 365,
-        "5y": 365 * 5,
-        "all": 365 * 50
-    }
-    return timedelta(days=mapping.get(option, 7))
-
 
 @router.get("/chart")
 def get_gold_chart(
     gold_types: Optional[list[str]] = Query(None, description="Mã loại vàng, ví dụ: sjc, pnj_mieng"),
-    range: str = Query("30d", description="Khoảng thời gian: 7d, 30d, 6m, 1y, 5y, all"),
+    days: int = Query(30, ge=1, le=3650, description="Số ngày gần nhất cần lấy (tối đa 10 năm)"),
     db: Session = Depends(get_db)
 ):
-    if gold_types is None or len(gold_types) == 0:
+    if not gold_types:
         gold_types = ["sjc"]
 
     end_date = date.today()
-    start_date = end_date - get_days_range(range)
+    start_date = end_date - timedelta(days=days)
 
     results = {}
 
@@ -55,6 +44,7 @@ def get_gold_chart(
             .all()
         )
 
+        # Lấy mỗi ngày một giá cuối cùng
         daily_latest = {}
         for p in records:
             if p.date not in daily_latest or p.timestamp > daily_latest[p.date].timestamp:
@@ -78,6 +68,7 @@ def get_gold_chart(
         "message": "Chart data fetched successfully",
         "data": results
     }
+
 
 
 @router.get("/table")
