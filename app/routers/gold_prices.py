@@ -70,21 +70,28 @@ def get_gold_chart(
     }
 
 
-
 @router.get("/table")
 def get_gold_table(
     selected_date: date = Query(default=date.today(), description="Ngày cần xem dữ liệu"),
     db: Session = Depends(get_db)
 ):
+    # Truy vấn tất cả các bản ghi trong ngày
     prices = (
         db.query(GoldPrice)
         .filter(GoldPrice.date == selected_date)
-        .order_by(GoldPrice.timestamp)
+        .order_by(GoldPrice.timestamp.desc())
         .all()
     )
 
-    data = []
+    # Lấy bản ghi cuối cùng trong ngày cho mỗi (gold_type, unit, location)
+    latest_prices = {}
     for p in prices:
+        key = (p.gold_type_id, p.unit_id, p.location_id)
+        if key not in latest_prices:
+            latest_prices[key] = p
+
+    data = []
+    for p in latest_prices.values():
         data.append({
             "timestamp": p.timestamp.isoformat(),
             "buy_price": float(p.buy_price),
