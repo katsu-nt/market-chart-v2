@@ -20,7 +20,7 @@ def get_gold_chart(
         gold_types = ["sjc"]
 
     end_date = date.today()
-    start_date = end_date - timedelta(days=days)
+    start_date = end_date - timedelta(days=days - 1)
 
     results = {}
 
