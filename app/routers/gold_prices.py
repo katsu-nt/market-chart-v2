@@ -51,12 +51,13 @@ def get_gold_chart(
                 daily_latest[p.date] = p
 
         sorted_items = sorted(daily_latest.items())
-        if len(sorted_items) < 7:
-            return JSONResponse(status_code=204, content={
-                "status": "no_data",
-                "message": f"Not enough data to build chart for '{code}' (found {len(sorted_items)} days)",
-                "data": None
-            })
+        if len(sorted_items) == 0:
+            results[code] = []
+        else:
+            results[code] = [
+                {"date": d.isoformat(), "price": float(p.sell_price)}
+                for d, p in sorted(sorted_items)
+            ]
 
         results[code] = [
             {"date": d.isoformat(), "price": float(p.sell_price)}
