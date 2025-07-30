@@ -1,8 +1,8 @@
 from app.database import SessionLocal
 from app.models.gold import GoldPrice, GoldType, Location, Unit
 from app.scrapers.pnj_api_scraper import fetch_pnj_history
-from datetime import datetime
 from app.utils.logger import get_logger
+from datetime import datetime
 
 logger = get_logger(__name__)
 
@@ -18,17 +18,21 @@ def get_or_create(session, model, code: str, name: str):
     session.commit()
     return instance
 
+
 def insert_gold_prices_for_date(date_str: str):
     session = SessionLocal()
     try:
         records = fetch_pnj_history(date_str)
-        count = 0
+        inserted = 0
+        skipped = 0
 
         for item in records:
-            gt = get_or_create(session, GoldType, item["gold_type"], item["gold_type"])
-            loc = get_or_create(session, Location, item["location"], item["location"])
-            unit = get_or_create(session, Unit, item["unit"], item["unit"])
+            # Dùng tên gốc cho name, dùng normalize cho code
+            gt = get_or_create(session, GoldType, item["gold_type_code"], item["gold_type_name"])
+            loc = get_or_create(session, Location, item["location_code"], item["location_code"])
+            unit = get_or_create(session, Unit, item["unit_code"], item["unit_code"])
 
+            # Check composite key: timestamp + gold_type + unit + location
             exists = session.query(GoldPrice).filter_by(
                 timestamp=item["timestamp"],
                 gold_type_id=gt.id,
@@ -37,11 +41,11 @@ def insert_gold_prices_for_date(date_str: str):
             ).first()
 
             if exists:
-                continue  
+                skipped += 1
+                continue
 
             price = GoldPrice(
-                timestamp=datetime.fromisoformat(item["timestamp"]),
-                date=datetime.fromisoformat(item["date"]).date(),
+                timestamp=item["timestamp"],
                 buy_price=item["buy_price"],
                 sell_price=item["sell_price"],
                 gold_type_id=gt.id,
@@ -49,9 +53,16 @@ def insert_gold_prices_for_date(date_str: str):
                 location_id=loc.id
             )
             session.add(price)
-            count += 1
+            inserted += 1
 
         session.commit()
-        logger.info(f"✅ Inserted {count} new records for {date_str}")
+        logger.info(f"✅ Inserted {inserted} new records, ⏭️ Skipped {skipped} duplicates for {date_str}")
+        return {"inserted": inserted, "skipped": skipped}
+
+    except Exception as e:
+        session.rollback()
+        logger.error(f"❌ Failed to insert records for {date_str}: {e}")
+        raise e
+
     finally:
         session.close()

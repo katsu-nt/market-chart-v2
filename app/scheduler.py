@@ -16,6 +16,6 @@ def run_hourly_job():
 
 def start_scheduler():
     scheduler = BackgroundScheduler(timezone="Asia/Ho_Chi_Minh")
-    scheduler.add_job(run_hourly_job, "cron", minute="*")
+    scheduler.add_job(run_hourly_job, "cron", minute="*/3")
     scheduler.start()
     logger.info("✅ Scheduler started")

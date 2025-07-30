@@ -23,7 +23,7 @@ def startup_event():
     logger.info("🔧 Creating DB tables if not exists...")
     Base.metadata.create_all(bind=engine)
 
-    start_scheduler()
+    # start_scheduler()
     logger.info("✅ App started")
 
 app.include_router(gold_prices.router)

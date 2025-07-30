@@ -25,4 +25,4 @@ def test_bulk_import_pnj():
 
 
 if __name__ == "__main__":
-    bulk_import_pnj(date(2025, 7, 1), date(2025, 7, 28))
+    bulk_import_pnj(date(2025, 7, 1), date(2025, 7, 29))
