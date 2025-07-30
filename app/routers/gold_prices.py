@@ -1,13 +1,14 @@
-from fastapi import APIRouter, Query, Depends
+from fastapi import APIRouter, Query, Depends, File, UploadFile
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional
+import json
 
 from app.database import get_db
-from app.models.gold import GoldPrice, GoldType, Location
+from app.models.gold import GoldPrice, GoldType, Location, Unit
 from app.services.import_pnj_to_db import insert_gold_prices_for_date
 
 router = APIRouter(prefix="/gold", tags=["Gold Prices"])
@@ -25,7 +26,7 @@ def get_gold_chart(
     if not locations:
         locations = ["hcm"]
 
-    end_date = date.today() + timedelta(days=1)  # 👈 fix: bao phủ cả ngày hiện tại
+    end_date = date.today() + timedelta(days=1)
     start_date = end_date - timedelta(days=days)
 
     results = {}
@@ -54,7 +55,7 @@ def get_gold_chart(
                     GoldPrice.gold_type_id == gold_type.id,
                     GoldPrice.location_id == location.id,
                     GoldPrice.timestamp >= start_date,
-                    GoldPrice.timestamp < end_date  # dùng '<' để tránh lỗi timezone
+                    GoldPrice.timestamp < end_date
                 )
                 .order_by(GoldPrice.timestamp)
                 .all()
@@ -80,34 +81,46 @@ def get_gold_chart(
     }
 
 
-
 @router.get("/table")
 def get_gold_table(
     selected_date: date = Query(default=date.today(), description="Ngày cần xem dữ liệu"),
     db: Session = Depends(get_db)
 ):
-    prices = (
-        db.query(GoldPrice)
-        .filter(func.date(GoldPrice.timestamp) == selected_date)
-        .order_by(GoldPrice.timestamp.desc())
-        .all()
-    )
+    def get_latest_by_group(target_date: date):
+        prices = (
+            db.query(GoldPrice)
+            .filter(func.date(GoldPrice.timestamp) == target_date)
+            .order_by(GoldPrice.timestamp.desc())
+            .all()
+        )
+        latest = {}
+        for p in prices:
+            key = (p.gold_type_id, p.unit_id, p.location_id)
+            if key not in latest:
+                latest[key] = p
+        return latest
 
-    latest_prices = {}
-    for p in prices:
-        key = (p.gold_type_id, p.unit_id, p.location_id)
-        if key not in latest_prices:
-            latest_prices[key] = p
+    current_data = get_latest_by_group(selected_date)
+    previous_data = get_latest_by_group(selected_date - timedelta(days=1))
 
     data = []
-    for p in latest_prices.values():
+    for key, current in current_data.items():
+        prev = previous_data.get(key)
+        delta_buy = delta_sell = None
+
+        if prev:
+            delta_buy = current.buy_price - prev.buy_price
+            delta_sell = current.sell_price - prev.sell_price
+
         data.append({
-            "timestamp": p.timestamp.isoformat(),
-            "buy_price": float(p.buy_price),
-            "sell_price": float(p.sell_price),
-            "gold_type": p.gold_type.code,
-            "unit": p.unit.code,
-            "location": p.location.code
+            "timestamp": current.timestamp.isoformat(),
+            "buy_price": float(current.buy_price),
+            "sell_price": float(current.sell_price),
+            "gold_type": current.gold_type.code,
+            "unit": current.unit.code,
+            "location": current.location.code,
+            "delta_buy": float(delta_buy) if delta_buy is not None else None,
+            "delta_sell": float(delta_sell) if delta_sell is not None else None,
         })
 
     return {
@@ -116,10 +129,86 @@ def get_gold_table(
         "data": data
     }
 
+@router.get("/current")
+def get_current_gold_price(
+    gold_type: str = Query(..., description="Mã loại vàng, ví dụ: sjc"),
+    location: str = Query(..., description="Mã khu vực, ví dụ: hcm"),
+    db: Session = Depends(get_db)
+):
+    gold = db.query(GoldType).filter_by(code=gold_type).first()
+    if not gold:
+        return JSONResponse(status_code=400, content={
+            "status": "error",
+            "message": f"Gold type '{gold_type}' not found"
+        })
 
-# -------------------------------
-# ✅ POST /gold/import
-# -------------------------------
+    loc = db.query(Location).filter_by(code=location).first()
+    if not loc:
+        return JSONResponse(status_code=400, content={
+            "status": "error",
+            "message": f"Location '{location}' not found"
+        })
+
+    # Tìm ngày gần nhất có dữ liệu, tối đa 30 ngày trước hôm nay
+    for day_offset in range(0, 30):
+        day = date.today() - timedelta(days=day_offset)
+        latest_today = (
+            db.query(GoldPrice)
+            .filter(
+                GoldPrice.gold_type_id == gold.id,
+                GoldPrice.location_id == loc.id,
+                func.date(GoldPrice.timestamp) == day
+            )
+            .order_by(GoldPrice.timestamp.desc())
+            .first()
+        )
+        if latest_today:
+            break
+    else:
+        return {
+            "status": "success",
+            "message": "No recent data found within 30 days",
+            "data": None
+        }
+
+    # Tìm dữ liệu cũ hơn trong vòng 7 ngày trước ngày tìm được ở trên
+    for day_offset in range(1, 8):
+        previous_day = day - timedelta(days=day_offset)
+        latest_previous = (
+            db.query(GoldPrice)
+            .filter(
+                GoldPrice.gold_type_id == gold.id,
+                GoldPrice.location_id == loc.id,
+                func.date(GoldPrice.timestamp) == previous_day
+            )
+            .order_by(GoldPrice.timestamp.desc())
+            .first()
+        )
+        if latest_previous:
+            break
+    else:
+        latest_previous = None
+
+    delta_percent = None
+    if latest_previous:
+        try:
+            delta_percent = (
+                (latest_today.sell_price - latest_previous.sell_price)
+                / latest_previous.sell_price * 100
+            )
+        except ZeroDivisionError:
+            delta_percent = None
+
+    return {
+        "status": "success",
+        "data": {
+            "timestamp": latest_today.timestamp.isoformat(),
+            "sell_price": float(latest_today.sell_price),
+            "delta_percent": round(delta_percent, 2) if delta_percent is not None else None,
+            "previous_timestamp": latest_previous.timestamp.isoformat() if latest_previous else None
+        }
+    }
+
 
 class ImportRange(BaseModel):
     start_date: date
@@ -171,3 +260,102 @@ def import_pnj_data_range(
         "message": f"Processed {total_days} day(s). Inserted: {total_inserted}, Skipped: {total_skipped}",
         "data": report
     }
+
+
+@router.post("/import-json")
+async def import_gold_data_from_json(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    try:
+        content = await file.read()
+        items = json.loads(content)
+    except Exception as e:
+        return JSONResponse(status_code=400, content={
+            "status": "error",
+            "message": f"Invalid JSON file: {str(e)}",
+            "data": None
+        })
+
+    inserted, skipped = 0, 0
+    for entry in items:
+        try:
+            gt_data = entry["gold_type"]
+            unit_data = entry["unit"]
+            loc_data = entry["location"]
+
+            # Upsert gold_type
+            gold_type = db.query(GoldType).filter_by(code=gt_data["code"]).first()
+            if not gold_type:
+                gold_type = GoldType(**gt_data)
+                db.add(gold_type)
+                db.flush()
+
+            # Upsert unit
+            unit = db.query(Unit).filter_by(code=unit_data["code"]).first()
+            if not unit:
+                unit = Unit(**unit_data)
+                db.add(unit)
+                db.flush()
+
+            # Upsert location
+            location = db.query(Location).filter_by(code=loc_data["code"]).first()
+            if not location:
+                location = Location(**loc_data)
+                db.add(location)
+                db.flush()
+
+            timestamp = datetime.fromisoformat(entry["timestamp"])
+
+            # Kiểm tra tồn tại
+            exists = db.query(GoldPrice).filter_by(
+                timestamp=timestamp,
+                gold_type_id=gold_type.id,
+                unit_id=unit.id,
+                location_id=location.id
+            ).first()
+
+            if exists:
+                skipped += 1
+                continue
+
+            # Thêm bản ghi mới
+            gold_price = GoldPrice(
+                timestamp=timestamp,
+                buy_price=entry["buy_price"],
+                sell_price=entry["sell_price"],
+                gold_type_id=gold_type.id,
+                unit_id=unit.id,
+                location_id=location.id
+            )
+            db.add(gold_price)
+            inserted += 1
+
+        except Exception:
+            skipped += 1  # optional: log lỗi chi tiết
+
+    db.commit()
+    return {
+        "status": "success",
+        "message": f"Inserted {inserted}, Skipped {skipped} records.",
+        "data": {"inserted": inserted, "skipped": skipped}
+    }
+
+
+from app.scrapers.xau_usd_scraper import scrape_xau_usd_price
+# from app.services.import_xau_usd import insert_xau_usd_price
+
+@router.post("/scrape-xau")
+def scrape_and_import_xau(db: Session = Depends(get_db)):
+    try:
+        data = scrape_xau_usd_price()
+        # result = insert_xau_usd_price(data, db)
+        return {
+            "status": "success",
+            "data": data
+        }
+    except Exception as e:
+        return JSONResponse(status_code=500, content={
+            "status": "error",
+            "message": str(e)
+        })

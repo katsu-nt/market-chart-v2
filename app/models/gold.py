@@ -36,7 +36,7 @@ class Location(Base):
 class GoldPrice(Base):
     __tablename__ = "gold_prices"
 
-    timestamp = Column(DateTime, nullable=False)
+    timestamp = Column(DateTime(timezone=False), nullable=False)
     buy_price = Column(Numeric, nullable=False)
     sell_price = Column(Numeric, nullable=False)
 

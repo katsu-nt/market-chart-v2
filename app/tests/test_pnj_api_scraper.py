@@ -2,14 +2,13 @@ import sys
 import os
 from decimal import Decimal
 
-# Đảm bảo thêm thư mục gốc để import app
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from scrapers.pnj_api_scraper import fetch_pnj_history
 
 
 def test_fetch_pnj_history():
-    sample_date = "20250710"  # <- chỉnh ngày theo dữ liệu bạn muốn test
+    sample_date = "20250730"  
     results = fetch_pnj_history(sample_date)
 
     assert isinstance(results, list), "Expected result to be a list"

@@ -27,12 +27,11 @@ def insert_gold_prices_for_date(date_str: str):
         skipped = 0
 
         for item in records:
-            # Dùng tên gốc cho name, dùng normalize cho code
+
             gt = get_or_create(session, GoldType, item["gold_type_code"], item["gold_type_name"])
             loc = get_or_create(session, Location, item["location_code"], item["location_code"])
             unit = get_or_create(session, Unit, item["unit_code"], item["unit_code"])
 
-            # Check composite key: timestamp + gold_type + unit + location
             exists = session.query(GoldPrice).filter_by(
                 timestamp=item["timestamp"],
                 gold_type_id=gt.id,
