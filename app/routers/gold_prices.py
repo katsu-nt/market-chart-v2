@@ -11,7 +11,7 @@ from app.database import get_db
 from app.models.gold import GoldPrice, GoldType, Location, Unit
 from app.services.import_pnj_to_db import insert_gold_prices_for_date
 
-router = APIRouter(prefix="/gold", tags=["Gold Prices"])
+router = APIRouter(prefix="/api/gold", tags=["Gold Prices"])
 
 
 @router.get("/chart")
