@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from app.scheduler import start_scheduler
-from app.routers import gold_prices
+from app.routers import gold_prices,exchange
 from app.utils.logger import get_logger
 from app.database import Base, engine 
 from fastapi.middleware.cors import CORSMiddleware
@@ -27,3 +27,4 @@ def startup_event():
     logger.info("✅ App started")
 
 app.include_router(gold_prices.router)
+app.include_router(exchange.router)
