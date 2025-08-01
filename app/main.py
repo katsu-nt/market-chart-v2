@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 logger = get_logger(__name__)
-#Middle ware
+#Middleware
 
 app.add_middleware(
     CORSMiddleware,

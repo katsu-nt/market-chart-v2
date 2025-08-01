@@ -8,7 +8,7 @@ os.makedirs(LOG_DIR, exist_ok=True)
 def get_logger(name: str) -> logging.Logger:
     logger = logging.getLogger(name)
     if logger.hasHandlers():
-        return logger  # Đã cấu hình rồi thì khỏi làm lại
+        return logger  
 
     logger.setLevel(logging.INFO)
 
