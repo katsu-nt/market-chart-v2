@@ -24,8 +24,8 @@ app.add_middleware(
 app.add_middleware(ExceptionMiddleware)
 
 # Đăng ký các router
-app.include_router(gold_router, prefix="/api/gold")
-app.include_router(exchange_router, prefix="/api/exchange")
+app.include_router(gold_router)
+app.include_router(exchange_router)
 
 @app.on_event("startup")
 def on_startup():

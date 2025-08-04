@@ -92,4 +92,19 @@ class GoldPriceRepository:
             .order_by(GoldPrice.timestamp.desc())
             .first()
         )
+    def get_units_by_gold_type_and_location(self, gold_type_id: int, location_id: int):
+        from app.models.gold import GoldPrice, Unit
+        # Truy vấn lấy tất cả unit xuất hiện với gold_type_id + location_id (distinct)
+        q = (
+            self.db.query(Unit)
+            .join(GoldPrice, GoldPrice.unit_id == Unit.id)
+            .filter(
+                GoldPrice.gold_type_id == gold_type_id,
+                GoldPrice.location_id == location_id,
+            )
+            .distinct()
+            .all()
+        )
+        return q
+
 

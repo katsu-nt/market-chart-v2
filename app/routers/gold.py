@@ -10,7 +10,7 @@ from typing import List, Optional
 from datetime import date
 import json
 
-router = APIRouter()
+router = APIRouter(prefix="/api/v1/gold", tags=["Gold"])
 
 def get_service(db: Session = Depends(get_db)):
     repo = GoldPriceRepository(db)

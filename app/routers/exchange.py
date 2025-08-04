@@ -6,7 +6,7 @@ from app.database import get_db
 from app.services.exchange_service import ExchangeService
 import json
 
-router = APIRouter()
+router = APIRouter(prefix="/api/v1/exchange", tags=["Exchange"])
 
 def get_service(db: Session = Depends(get_db)):
     return ExchangeService(db)

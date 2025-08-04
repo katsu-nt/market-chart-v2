@@ -51,22 +51,28 @@ class GoldPriceService:
         start = today - timedelta(days=days-1)
         for gt_code in gold_types:
             gt = self.repo.get_gold_type_by_code(gt_code)
-            if not gt: continue
+            if not gt:
+                continue
             for loc_code in locations:
                 loc = self.repo.get_location_by_code(loc_code)
-                if not loc: continue
-                # mặc định unit là tael
-                un = self.repo.get_unit_by_code("tael")
-                if not un: continue
-                series = self.repo.get_range(gt.id, loc.id, un.id, start, today)
-                daily_latest = {}
-                for p in series:
-                    d = p.timestamp.date()
-                    if d not in daily_latest or p.timestamp > daily_latest[d].timestamp:
-                        daily_latest[d] = p
-                key = f"{gt_code}-{loc_code}"
-                data[key] = [GoldChartItem(date=day, price=float(p.sell_price)) for day, p in sorted(daily_latest.items())]
+                if not loc:
+                    continue
+                # Lấy mọi đơn vị giá vàng hiện có với loại vàng này ở location này!
+                units = self.repo.get_units_by_gold_type_and_location(gt.id, loc.id)
+                for un in units:
+                    series = self.repo.get_range(gt.id, loc.id, un.id, start, today)
+                    daily_latest = {}
+                    for p in series:
+                        d = p.timestamp.date()
+                        if d not in daily_latest or p.timestamp > daily_latest[d].timestamp:
+                            daily_latest[d] = p
+                    key = f"{gt_code}-{loc_code}"
+                    data[key] = [
+                        GoldChartItem(date=day, price=float(p.sell_price))
+                        for day, p in sorted(daily_latest.items())
+                    ]
         return GoldChartResponse(status="success", data=data)
+
 
     def get_gold_table(self, selected_date: date):
         current_data = self.repo.get_latest_group_by_key(selected_date)
