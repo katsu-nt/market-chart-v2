@@ -22,7 +22,7 @@ def get_logger(name: str) -> logging.Logger:
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
 
-    # File log (ghi vào file, tự xoay vòng file khi lớn hơn 5MB, giữ 3 bản)
+    # File log
     file_handler = RotatingFileHandler(
         os.path.join(LOG_DIR, "app.log"), maxBytes=5*1024*1024, backupCount=3, encoding="utf-8"
     )
