@@ -3,41 +3,104 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Virtual environment
-venv/
-.env
-.venv/
+# C extensions
+*.so
 
-# Logs
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff
+*.log
+local_settings.py
+db.sqlite3
+
+# FastAPI / Uvicorn logs
 logs/
 *.log
 
-# OS-specific
-.DS_Store
-Thumbs.db
-
-# IDEs
+# VS Code
 .vscode/
-.idea/
+*.code-workspace
 
-# Test cache
-.pytest_cache/
-.tox/
+# Environments
+.env
+.env.*
+.venv
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# Alembic migration
+migrations/__pycache__/
+migrations/versions/__pycache__/
 
 # MyPy
 .mypy_cache/
 .dmypy.json
+.pyre/
 
-# Coverage
-.coverage
-htmlcov/
-.coverage.*
+# Jupyter Notebook
+.ipynb_checkpoints
 
-# Build
-build/
-dist/
-*.egg-info/
+# PyCharm
+.idea/
 
-# SQLite or local DBs (if used)
-*.sqlite3
+# macOS
+.DS_Store
+
+# System files
+Thumbs.db
+Desktop.ini
+
+# Local database files
 *.db
+*.sqlite3
+
+# Other user config
+*.sublime-workspace
+*.sublime-project

@@ -1,30 +1,32 @@
 from fastapi import FastAPI
-from app.scheduler import start_scheduler
-from app.routers import gold_prices,exchange
-from app.utils.logger import get_logger
-from app.database import Base, engine 
 from fastapi.middleware.cors import CORSMiddleware
+from app.middleware.error_handler import ExceptionMiddleware
+from app.routers.gold import router as gold_router
+from app.routers.exchange import router as exchange_router
+from app.scheduler.jobs import start_scheduler
 
-app = FastAPI()
-logger = get_logger(__name__)
-#Middleware
+app = FastAPI(
+    title="Market Backend API",
+    description="Backend hệ thống quản lý giá vàng, tỷ giá, chỉ số tài chính...",
+    version="1.0.0"
+)
 
+# Cấu hình CORS ở đây!
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  
+    allow_origins=["*"],  # Cho phép mọi domain gọi API. Đổi thành ["https://domain.com"] nếu muốn hạn chế
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-#App start up
+# Middleware handle exception
+app.add_middleware(ExceptionMiddleware)
+
+# Đăng ký các router
+app.include_router(gold_router)
+app.include_router(exchange_router)
+
 @app.on_event("startup")
-def startup_event():
-    logger.info("🔧 Creating DB tables if not exists...")
-    Base.metadata.create_all(bind=engine)
-
+def on_startup():
     start_scheduler()
-    logger.info("✅ App started")
-
-app.include_router(gold_prices.router)
-app.include_router(exchange.router)
