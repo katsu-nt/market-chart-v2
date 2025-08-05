@@ -21,7 +21,8 @@ class ExchangeService:
             latest = self.repo.get_latest_central(cur.id)
             if not latest:
                 return {"status": "error", "message": f"Không có tỷ giá trung tâm cho {code}"}
-            prev = self.repo.get_prev_central(cur.id, latest.date)
+            # So với bản ghi cuối ngày hôm trước
+            prev = self.repo.get_latest_of_prev_day_central(cur.id, latest.date)
             delta_percent = (
                 (latest.rate - prev.rate) / prev.rate * 100 if prev and prev.rate else None
             )
@@ -43,7 +44,8 @@ class ExchangeService:
             latest = self.repo.get_latest_market(cur.id)
             if not latest:
                 return {"status": "error", "message": f"Không có tỷ giá thị trường cho {code}"}
-            prev = self.repo.get_prev_market(cur.id, latest.timestamp)
+            # So với bản ghi cuối ngày hôm trước
+            prev = self.repo.get_latest_of_prev_day_market(cur.id, latest.timestamp)
             delta_percent = (
                 (latest.rate - prev.rate) / prev.rate * 100 if prev and prev.rate else None
             )
@@ -64,7 +66,8 @@ class ExchangeService:
             latest = self.repo.get_latest_index(idx.id)
             if not latest:
                 return {"status": "error", "message": f"Không có giá trị chỉ số {code}"}
-            prev = self.repo.get_prev_index(idx.id, latest.timestamp)
+            # So với bản ghi cuối ngày hôm trước
+            prev = self.repo.get_latest_of_prev_day_index(idx.id, latest.timestamp)
             delta_percent = (
                 (latest.value - prev.value) / prev.value * 100 if prev and prev.value else None
             )

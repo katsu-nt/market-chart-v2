@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import Optional, List
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from app.models.exchange import (
     Currency, CentralExchangeRate, MarketExchangeRate,
     FinancialIndexMeta, FinancialIndexValue
@@ -38,6 +38,18 @@ class ExchangeRepository:
             .first()
         )
 
+    def get_latest_of_prev_day_central(self, currency_id: int, current_date: date) -> Optional[CentralExchangeRate]:
+        prev_day = current_date - timedelta(days=1)
+        return (
+            self.db.query(CentralExchangeRate)
+            .filter(
+                CentralExchangeRate.currency_id == currency_id,
+                CentralExchangeRate.date == prev_day
+            )
+            .order_by(CentralExchangeRate.date.desc())
+            .first()
+        )
+
     def get_central_rates(self, date_: date) -> List[CentralExchangeRate]:
         return self.db.query(CentralExchangeRate).filter_by(date=date_).all()
 
@@ -59,6 +71,18 @@ class ExchangeRepository:
             .filter(
                 MarketExchangeRate.currency_id == currency_id,
                 MarketExchangeRate.timestamp < timestamp
+            )
+            .order_by(MarketExchangeRate.timestamp.desc())
+            .first()
+        )
+
+    def get_latest_of_prev_day_market(self, currency_id: int, current_timestamp: datetime) -> Optional[MarketExchangeRate]:
+        prev_day = current_timestamp.date() - timedelta(days=1)
+        return (
+            self.db.query(MarketExchangeRate)
+            .filter(
+                MarketExchangeRate.currency_id == currency_id,
+                func.date(MarketExchangeRate.timestamp) == prev_day
             )
             .order_by(MarketExchangeRate.timestamp.desc())
             .first()
@@ -90,6 +114,18 @@ class ExchangeRepository:
             .filter(
                 FinancialIndexValue.index_id == index_id,
                 FinancialIndexValue.timestamp < timestamp
+            )
+            .order_by(FinancialIndexValue.timestamp.desc())
+            .first()
+        )
+
+    def get_latest_of_prev_day_index(self, index_id: int, current_timestamp: datetime) -> Optional[FinancialIndexValue]:
+        prev_day = current_timestamp.date() - timedelta(days=1)
+        return (
+            self.db.query(FinancialIndexValue)
+            .filter(
+                FinancialIndexValue.index_id == index_id,
+                func.date(FinancialIndexValue.timestamp) == prev_day
             )
             .order_by(FinancialIndexValue.timestamp.desc())
             .first()

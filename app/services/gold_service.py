@@ -19,7 +19,9 @@ class GoldPriceService:
             raise ValueError("Not found: gold_type, location, or unit.")
 
         gold_price = self.repo.get_latest(gt.id, loc.id, un.id)
-        prev_price = self.repo.get_latest_before(gt.id, loc.id, un.id, gold_price.timestamp) if gold_price else None
+        prev_price = None
+        if gold_price:
+            prev_price = self.repo.get_latest_of_previous_day(gt.id, loc.id, un.id, gold_price.timestamp)
 
         delta_buy = delta_sell = delta_buy_percent = delta_sell_percent = None
         if gold_price and prev_price:
@@ -57,7 +59,6 @@ class GoldPriceService:
                 loc = self.repo.get_location_by_code(loc_code)
                 if not loc:
                     continue
-                # Lấy mọi đơn vị giá vàng hiện có với loại vàng này ở location này!
                 units = self.repo.get_units_by_gold_type_and_location(gt.id, loc.id)
                 for un in units:
                     series = self.repo.get_range(gt.id, loc.id, un.id, start, today)
@@ -72,7 +73,6 @@ class GoldPriceService:
                         for day, p in sorted(daily_latest.items())
                     ]
         return GoldChartResponse(status="success", data=data)
-
 
     def get_gold_table(self, selected_date: date):
         current_data = self.repo.get_latest_group_by_key(selected_date)
@@ -99,7 +99,6 @@ class GoldPriceService:
                 delta_sell=delta_sell
             ))
         return GoldPriceListResponse(status="success", data=result)
-
 
     def import_gold_data_from_json(self, items: List[dict]):
         inserted, skipped = 0, 0

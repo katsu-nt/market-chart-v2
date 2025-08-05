@@ -11,10 +11,9 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Cấu hình CORS ở đây!
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Cho phép mọi domain gọi API. Đổi thành ["https://domain.com"] nếu muốn hạn chế
+    allow_origins=["*"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -23,7 +22,7 @@ app.add_middleware(
 # Middleware handle exception
 app.add_middleware(ExceptionMiddleware)
 
-# Đăng ký các router
+# Router
 app.include_router(gold_router)
 app.include_router(exchange_router)
 

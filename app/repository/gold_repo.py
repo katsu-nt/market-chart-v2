@@ -25,6 +25,20 @@ class GoldPriceRepository:
             .first()
         )
 
+    def get_latest_of_previous_day(self, gold_type_id, location_id, unit_id, current_timestamp):
+        prev_day = (current_timestamp.date() - timedelta(days=1))
+        return (
+            self.db.query(GoldPrice)
+            .filter(
+                GoldPrice.gold_type_id == gold_type_id,
+                GoldPrice.location_id == location_id,
+                GoldPrice.unit_id == unit_id,
+                func.date(GoldPrice.timestamp) == prev_day
+            )
+            .order_by(GoldPrice.timestamp.desc())
+            .first()
+        )
+
     def get_range(self, gold_type_id: int, location_id: int, unit_id: int, start: date, end: date) -> List[GoldPrice]:
         q = (
             self.db.query(GoldPrice)
@@ -40,7 +54,6 @@ class GoldPriceRepository:
         return q.all()
 
     def get_latest_group_by_key(self, target_date: date) -> List[GoldPrice]:
-        # Lấy bản ghi cuối cùng từng nhóm (gold_type, location, unit) của ngày target_date
         prices = (
             self.db.query(GoldPrice)
             .filter(func.date(GoldPrice.timestamp) == target_date)
@@ -79,7 +92,7 @@ class GoldPriceRepository:
         self.db.add(gp)
         self.db.commit()
         return gp
-    
+
     def get_latest_before(self, gold_type_id, location_id, unit_id, before_ts):
         return (
             self.db.query(GoldPrice)
@@ -92,9 +105,9 @@ class GoldPriceRepository:
             .order_by(GoldPrice.timestamp.desc())
             .first()
         )
+
     def get_units_by_gold_type_and_location(self, gold_type_id: int, location_id: int):
         from app.models.gold import GoldPrice, Unit
-        # Truy vấn lấy tất cả unit xuất hiện với gold_type_id + location_id (distinct)
         q = (
             self.db.query(Unit)
             .join(GoldPrice, GoldPrice.unit_id == Unit.id)
@@ -106,5 +119,3 @@ class GoldPriceRepository:
             .all()
         )
         return q
-
-
