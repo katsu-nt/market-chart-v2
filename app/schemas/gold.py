@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from datetime import datetime, date
 from typing import List, Optional
 
@@ -45,7 +45,3 @@ class GoldPriceListResponse(BaseModel):
     status: str
     message: Optional[str] = None
     data: List[GoldPriceResponse]
-
-class ImportRange(BaseModel):
-    start_date: date
-    end_date: date

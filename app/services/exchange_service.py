@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from datetime import date, timedelta, datetime
-from typing import List, Dict, Any, Optional
+from datetime import date, timedelta
+from typing import List, Optional
 from app.models.exchange import (
     Currency, CentralExchangeRate, MarketExchangeRate,
     FinancialIndexMeta, FinancialIndexValue
@@ -21,7 +21,6 @@ class ExchangeService:
             latest = self.repo.get_latest_central(cur.id)
             if not latest:
                 return {"status": "error", "message": f"Không có tỷ giá trung tâm cho {code}"}
-            # So với bản ghi cuối ngày hôm trước
             prev = self.repo.get_latest_of_prev_day_central(cur.id, latest.date)
             delta_percent = (
                 (latest.rate - prev.rate) / prev.rate * 100 if prev and prev.rate else None
@@ -37,6 +36,7 @@ class ExchangeService:
                     "previous_date": prev.date.isoformat() if prev else None
                 }
             }
+
         elif type_ == "market":
             cur = self.repo.get_currency_by_code(code)
             if not cur:
@@ -44,7 +44,6 @@ class ExchangeService:
             latest = self.repo.get_latest_market(cur.id)
             if not latest:
                 return {"status": "error", "message": f"Không có tỷ giá thị trường cho {code}"}
-            # So với bản ghi cuối ngày hôm trước
             prev = self.repo.get_latest_of_prev_day_market(cur.id, latest.timestamp)
             delta_percent = (
                 (latest.rate - prev.rate) / prev.rate * 100 if prev and prev.rate else None
@@ -59,6 +58,7 @@ class ExchangeService:
                     "previous_timestamp": prev.timestamp.isoformat() if prev else None
                 }
             }
+
         elif type_ == "index":
             idx = self.repo.get_index_by_code(code)
             if not idx:
@@ -66,7 +66,6 @@ class ExchangeService:
             latest = self.repo.get_latest_index(idx.id)
             if not latest:
                 return {"status": "error", "message": f"Không có giá trị chỉ số {code}"}
-            # So với bản ghi cuối ngày hôm trước
             prev = self.repo.get_latest_of_prev_day_index(idx.id, latest.timestamp)
             delta_percent = (
                 (latest.value - prev.value) / prev.value * 100 if prev and prev.value else None
@@ -81,12 +80,14 @@ class ExchangeService:
                     "previous_timestamp": prev.timestamp.isoformat() if prev else None
                 }
             }
+
         else:
             return {"status": "error", "message": "type phải là central, market, hoặc index"}
 
     def get_table(self, type_: str, date_: date, code: Optional[str]):
         data = []
         prev_date = date_ - timedelta(days=1)
+
         if type_ == "central":
             q = self.repo.db.query(CentralExchangeRate)
             if code:
@@ -203,15 +204,18 @@ class ExchangeService:
                     "prev_value": float(prev.value) if prev else None,
                 })
             return {"status": "success", "date": date_.isoformat(), "data": data}
+
         else:
             return {"status": "error", "message": "type phải là central, market, hoặc index"}
 
     def get_chart(self, type_: str, code: List[str], days: int):
-        from app.models.exchange import Currency, FinancialIndexMeta, CentralExchangeRate, MarketExchangeRate, FinancialIndexValue
-        from sqlalchemy import func
+        from app.models.exchange import (
+            Currency, FinancialIndexMeta, CentralExchangeRate, MarketExchangeRate, FinancialIndexValue
+        )
         results = {}
-        start_date = date.today() - timedelta(days=days-1)
+        start_date = date.today() - timedelta(days=days - 1)
         end_date = date.today() + timedelta(days=1)
+
         if type_ == "central":
             code2id = {c.code: c.id for c in self.repo.db.query(Currency).filter(Currency.code.in_(code)).all()}
             for code_ in code:
@@ -222,7 +226,7 @@ class ExchangeService:
                     .filter(
                         CentralExchangeRate.currency_id == code2id[code_],
                         CentralExchangeRate.date >= start_date,
-                        CentralExchangeRate.date < end_date
+                        CentralExchangeRate.date < end_date,
                     )
                     .order_by(CentralExchangeRate.date)
                     .all()
@@ -231,10 +235,11 @@ class ExchangeService:
                     {
                         "date": r.date.isoformat(),
                         "rate": float(r.rate),
-                        "published_at": r.published_at.isoformat() if r.published_at else None
+                        "published_at": r.published_at.isoformat() if r.published_at else None,
                     }
                     for r in recs
                 ]
+
         elif type_ == "market":
             code2id = {c.code: c.id for c in self.repo.db.query(Currency).filter(Currency.code.in_(code)).all()}
             for code_ in code:
@@ -245,7 +250,7 @@ class ExchangeService:
                     .filter(
                         MarketExchangeRate.currency_id == code2id[code_],
                         MarketExchangeRate.timestamp >= start_date,
-                        MarketExchangeRate.timestamp < end_date
+                        MarketExchangeRate.timestamp < end_date,
                     )
                     .order_by(MarketExchangeRate.timestamp)
                     .all()
@@ -263,6 +268,7 @@ class ExchangeService:
                     }
                     for d, r in sorted_items
                 ]
+
         elif type_ == "index":
             code2id = {i.code: i.id for i in self.repo.db.query(FinancialIndexMeta).filter(FinancialIndexMeta.code.in_(code)).all()}
             for code_ in code:
@@ -273,7 +279,7 @@ class ExchangeService:
                     .filter(
                         FinancialIndexValue.index_id == code2id[code_],
                         FinancialIndexValue.timestamp >= start_date,
-                        FinancialIndexValue.timestamp < end_date
+                        FinancialIndexValue.timestamp < end_date,
                     )
                     .order_by(FinancialIndexValue.timestamp)
                     .all()
@@ -291,86 +297,8 @@ class ExchangeService:
                     }
                     for d, r in sorted_items
                 ]
+
         else:
             return {"status": "error", "message": "type phải là central, market, hoặc index"}
 
-        return {
-            "status": "success",
-            "data": results
-        }
-
-    def import_central_rate(self, data: list):
-        from app.models.exchange import Currency, CentralExchangeRate
-        count = 0
-        for row in data:
-            code = row["currency"]
-            currency = self.repo.db.query(Currency).filter_by(code=code).first()
-            if not currency:
-                currency = Currency(code=code)
-                self.repo.db.add(currency)
-                self.repo.db.flush()
-            rate = float(row["rate"])
-            date_val = date.fromisoformat(row["date"])
-            published_at = (
-                datetime.fromisoformat(row["published_at"]) if row.get("published_at") else None
-            )
-            rec = CentralExchangeRate(
-                currency_id=currency.id,
-                rate=rate,
-                date=date_val,
-                published_at=published_at
-            )
-            self.repo.db.merge(rec)
-            count += 1
-        self.repo.db.commit()
-        return {"status": "success", "imported": count}
-
-    def import_market_rate(self, data: list):
-        from app.models.exchange import Currency, MarketExchangeRate
-        count = 0
-        for row in data:
-            code = row["currency"]
-            currency = self.repo.db.query(Currency).filter_by(code=code).first()
-            if not currency:
-                currency = Currency(code=code)
-                self.repo.db.add(currency)
-                self.repo.db.flush()
-            rate = float(row["rate"])
-            timestamp = datetime.fromisoformat(row["timestamp"])
-            source = row.get("source", "imported")
-            type_val = row.get("type")
-            rec = MarketExchangeRate(
-                currency_id=currency.id,
-                rate=rate,
-                timestamp=timestamp,
-                source=source,
-                type=type_val
-            )
-            self.repo.db.merge(rec)
-            count += 1
-        self.repo.db.commit()
-        return {"status": "success", "imported": count}
-
-    def import_index(self, data: list):
-        from app.models.exchange import FinancialIndexMeta, FinancialIndexValue
-        count = 0
-        for row in data:
-            code = row["index"]
-            idx = self.repo.db.query(FinancialIndexMeta).filter_by(code=code).first()
-            if not idx:
-                idx = FinancialIndexMeta(code=code)
-                self.repo.db.add(idx)
-                self.repo.db.flush()
-            value = float(row["value"])
-            timestamp = datetime.fromisoformat(row["timestamp"])
-            source = row.get("source", "imported")
-            rec = FinancialIndexValue(
-                index_id=idx.id,
-                value=value,
-                timestamp=timestamp,
-                source=source
-            )
-            self.repo.db.merge(rec)
-            count += 1
-        self.repo.db.commit()
-        return {"status": "success", "imported": count}
+        return {"status": "success", "data": results}

@@ -10,11 +10,7 @@ Hỗ trợ crawler tự động (scheduler), import dữ liệu, migration, REST
 
 - Quản lý giá vàng (trong nước, thế giới) theo loại, vùng, thời gian
 - Quản lý tỷ giá trung tâm, thị trường, chỉ số tài chính
-- Scheduler tự động crawl dữ liệu PNJ, XAU/USD, tỷ giá, v.v.
-- Import/export dữ liệu từ file JSON
 - API thống kê, lấy bảng giá, biểu đồ, chi tiết từng loại, v.v.
-- Response chuẩn hóa, dễ dùng cho mọi frontend/mobile
-- Xử lý exception, middleware log, CORS, environment, v.v.
 
 ---
 

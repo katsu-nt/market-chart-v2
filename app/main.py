@@ -1,9 +1,9 @@
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.middleware.error_handler import ExceptionMiddleware
 from app.routers.gold import router as gold_router
 from app.routers.exchange import router as exchange_router
-from app.scheduler.jobs import start_scheduler
 
 app = FastAPI(
     title="Market Backend API",
@@ -13,7 +13,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  
+    allow_origins=["*"],  # TODO: siết lại origin trong môi trường production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -22,10 +22,7 @@ app.add_middleware(
 # Middleware handle exception
 app.add_middleware(ExceptionMiddleware)
 
-# Router
+# Routers 
 app.include_router(gold_router)
 app.include_router(exchange_router)
 
-@app.on_event("startup")
-def on_startup():
-    start_scheduler()

@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from app.models.gold import GoldPrice, GoldType, Unit, Location
-from sqlalchemy import func, and_
+from sqlalchemy import func
 from typing import Optional, List
 from datetime import date, datetime, timedelta
 
@@ -33,25 +33,25 @@ class GoldPriceRepository:
                 GoldPrice.gold_type_id == gold_type_id,
                 GoldPrice.location_id == location_id,
                 GoldPrice.unit_id == unit_id,
-                func.date(GoldPrice.timestamp) == prev_day
+                func.date(GoldPrice.timestamp) == prev_day,
             )
             .order_by(GoldPrice.timestamp.desc())
             .first()
         )
 
     def get_range(self, gold_type_id: int, location_id: int, unit_id: int, start: date, end: date) -> List[GoldPrice]:
-        q = (
+        return (
             self.db.query(GoldPrice)
             .filter(
                 GoldPrice.gold_type_id == gold_type_id,
                 GoldPrice.location_id == location_id,
                 GoldPrice.unit_id == unit_id,
                 GoldPrice.timestamp >= datetime.combine(start, datetime.min.time()),
-                GoldPrice.timestamp < datetime.combine(end + timedelta(days=1), datetime.min.time())
+                GoldPrice.timestamp < datetime.combine(end + timedelta(days=1), datetime.min.time()),
             )
             .order_by(GoldPrice.timestamp)
+            .all()
         )
-        return q.all()
 
     def get_latest_group_by_key(self, target_date: date) -> List[GoldPrice]:
         prices = (
@@ -61,7 +61,7 @@ class GoldPriceRepository:
                 GoldPrice.gold_type_id,
                 GoldPrice.unit_id,
                 GoldPrice.location_id,
-                GoldPrice.timestamp.desc()
+                GoldPrice.timestamp.desc(),
             )
             .all()
         )
@@ -72,27 +72,6 @@ class GoldPriceRepository:
                 latest[key] = p
         return list(latest.values())
 
-    def upsert_gold_price(self, timestamp, buy_price, sell_price, gold_type_id, unit_id, location_id):
-        exists = self.db.query(GoldPrice).filter_by(
-            timestamp=timestamp,
-            gold_type_id=gold_type_id,
-            unit_id=unit_id,
-            location_id=location_id
-        ).first()
-        if exists:
-            return None
-        gp = GoldPrice(
-            timestamp=timestamp,
-            buy_price=buy_price,
-            sell_price=sell_price,
-            gold_type_id=gold_type_id,
-            unit_id=unit_id,
-            location_id=location_id
-        )
-        self.db.add(gp)
-        self.db.commit()
-        return gp
-
     def get_latest_before(self, gold_type_id, location_id, unit_id, before_ts):
         return (
             self.db.query(GoldPrice)
@@ -100,15 +79,14 @@ class GoldPriceRepository:
                 GoldPrice.gold_type_id == gold_type_id,
                 GoldPrice.location_id == location_id,
                 GoldPrice.unit_id == unit_id,
-                GoldPrice.timestamp < before_ts
+                GoldPrice.timestamp < before_ts,
             )
             .order_by(GoldPrice.timestamp.desc())
             .first()
         )
 
     def get_units_by_gold_type_and_location(self, gold_type_id: int, location_id: int):
-        from app.models.gold import GoldPrice, Unit
-        q = (
+        return (
             self.db.query(Unit)
             .join(GoldPrice, GoldPrice.unit_id == Unit.id)
             .filter(
@@ -118,4 +96,3 @@ class GoldPriceRepository:
             .distinct()
             .all()
         )
-        return q

@@ -1,10 +1,8 @@
 from app.repository.gold_repo import GoldPriceRepository
 from app.schemas.gold import (
-    GoldPriceResponse, GoldPriceListResponse, GoldChartResponse,
-    GoldChartItem, ImportRange
+    GoldPriceResponse, GoldPriceListResponse, GoldChartResponse, GoldChartItem
 )
-from app.models.gold import GoldType, Unit, Location, GoldPrice
-from typing import List, Dict, Any
+from typing import List
 from datetime import date, timedelta
 
 class GoldPriceService:
@@ -21,7 +19,9 @@ class GoldPriceService:
         gold_price = self.repo.get_latest(gt.id, loc.id, un.id)
         prev_price = None
         if gold_price:
-            prev_price = self.repo.get_latest_of_previous_day(gt.id, loc.id, un.id, gold_price.timestamp)
+            prev_price = self.repo.get_latest_of_previous_day(
+                gt.id, loc.id, un.id, gold_price.timestamp
+            )
 
         delta_buy = delta_sell = delta_buy_percent = delta_sell_percent = None
         if gold_price and prev_price:
@@ -32,25 +32,29 @@ class GoldPriceService:
             if prev_price.sell_price and float(prev_price.sell_price) != 0:
                 delta_sell_percent = (delta_sell / float(prev_price.sell_price)) * 100
 
-        response = GoldPriceResponse(
-            timestamp=gold_price.timestamp,
-            buy_price=float(gold_price.buy_price),
-            sell_price=float(gold_price.sell_price),
-            gold_type=gt.code,
-            unit=un.code,
-            location=loc.code,
-            delta_buy=delta_buy,
-            delta_sell=delta_sell,
-            delta_buy_percent=delta_buy_percent,
-            delta_sell_percent=delta_sell_percent,
-        ) if gold_price else None
+        response = (
+            GoldPriceResponse(
+                timestamp=gold_price.timestamp,
+                buy_price=float(gold_price.buy_price),
+                sell_price=float(gold_price.sell_price),
+                gold_type=gt.code,
+                unit=un.code,
+                location=loc.code,
+                delta_buy=delta_buy,
+                delta_sell=delta_sell,
+                delta_buy_percent=delta_buy_percent,
+                delta_sell_percent=delta_sell_percent,
+            )
+            if gold_price
+            else None
+        )
 
         return {"status": "success", "data": [response] if response else []}
 
     def get_gold_chart(self, gold_types: List[str], locations: List[str], days: int):
         data = {}
         today = date.today()
-        start = today - timedelta(days=days-1)
+        start = today - timedelta(days=days - 1)
         for gt_code in gold_types:
             gt = self.repo.get_gold_type_by_code(gt_code)
             if not gt:
@@ -88,107 +92,16 @@ class GoldPriceService:
             gt = cur.gold_type
             un = cur.unit
             loc = cur.location
-            result.append(GoldPriceResponse(
-                timestamp=cur.timestamp,
-                buy_price=float(cur.buy_price),
-                sell_price=float(cur.sell_price),
-                gold_type=gt.code,
-                unit=un.code,
-                location=loc.code,
-                delta_buy=delta_buy,
-                delta_sell=delta_sell
-            ))
-        return GoldPriceListResponse(status="success", data=result)
-
-    def import_gold_data_from_json(self, items: List[dict]):
-        inserted, skipped = 0, 0
-        for entry in items:
-            gt = self.repo.get_gold_type_by_code(entry["gold_type"]["code"])
-            if not gt:
-                gt = GoldType(**entry["gold_type"])
-                self.repo.db.add(gt)
-                self.repo.db.flush()
-            un = self.repo.get_unit_by_code(entry["unit"]["code"])
-            if not un:
-                un = Unit(**entry["unit"])
-                self.repo.db.add(un)
-                self.repo.db.flush()
-            loc = self.repo.get_location_by_code(entry["location"]["code"])
-            if not loc:
-                loc = Location(**entry["location"])
-                self.repo.db.add(loc)
-                self.repo.db.flush()
-            timestamp = entry["timestamp"]
-            exists = self.repo.db.query(GoldPrice).filter_by(
-                timestamp=timestamp,
-                gold_type_id=gt.id,
-                unit_id=un.id,
-                location_id=loc.id
-            ).first()
-            if exists:
-                skipped += 1
-                continue
-            gold_price = GoldPrice(
-                timestamp=timestamp,
-                buy_price=entry["buy_price"],
-                sell_price=entry["sell_price"],
-                gold_type_id=gt.id,
-                unit_id=un.id,
-                location_id=loc.id
+            result.append(
+                GoldPriceResponse(
+                    timestamp=cur.timestamp,
+                    buy_price=float(cur.buy_price),
+                    sell_price=float(cur.sell_price),
+                    gold_type=gt.code,
+                    unit=un.code,
+                    location=loc.code,
+                    delta_buy=delta_buy,
+                    delta_sell=delta_sell,
+                )
             )
-            self.repo.db.add(gold_price)
-            inserted += 1
-        self.repo.db.commit()
-        return {"inserted": inserted, "skipped": skipped}
-
-    def import_pnj_range(self, start: date, end: date, scraper):
-        total_days = (end - start).days + 1
-        report = []
-        inserted, skipped = 0, 0
-        for n in range(total_days):
-            day = start + timedelta(days=n)
-            try:
-                items = scraper.fetch(day.strftime("%Y%m%d"))
-                count = 0
-                for item in items:
-                    gt = self.repo.get_gold_type_by_code(item["gold_type_code"])
-                    if not gt:
-                        gt = GoldType(code=item["gold_type_code"], name=item["gold_type_code"], source="pnj")
-                        self.repo.db.add(gt)
-                        self.repo.db.flush()
-                    un = self.repo.get_unit_by_code(item["unit_code"])
-                    if not un:
-                        un = Unit(code=item["unit_code"], name=item["unit_code"])
-                        self.repo.db.add(un)
-                        self.repo.db.flush()
-                    loc = self.repo.get_location_by_code(item["location_code"])
-                    if not loc:
-                        loc = Location(code=item["location_code"], name=item["location_code"])
-                        self.repo.db.add(loc)
-                        self.repo.db.flush()
-                    exists = self.repo.db.query(GoldPrice).filter_by(
-                        timestamp=item["timestamp"],
-                        gold_type_id=gt.id,
-                        unit_id=un.id,
-                        location_id=loc.id
-                    ).first()
-                    if exists:
-                        skipped += 1
-                        continue
-                    gold_price = GoldPrice(
-                        timestamp=item["timestamp"],
-                        buy_price=item["buy_price"],
-                        sell_price=item["sell_price"],
-                        gold_type_id=gt.id,
-                        unit_id=un.id,
-                        location_id=loc.id
-                    )
-                    self.repo.db.add(gold_price)
-                    inserted += 1
-                    count += 1
-                self.repo.db.commit()
-                report.append({"date": str(day), "status": "success", "inserted": count})
-            except Exception as e:
-                self.repo.db.rollback()
-                report.append({"date": str(day), "status": "error", "error": str(e)})
-        return {"inserted": inserted, "skipped": skipped, "report": report}
+        return GoldPriceListResponse(status="success", data=result)

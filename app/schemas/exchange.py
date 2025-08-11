@@ -2,12 +2,6 @@ from pydantic import BaseModel
 from datetime import date, datetime
 from typing import Optional, List, Dict
 
-class CurrencySchema(BaseModel):
-    code: str
-
-class FinancialIndexSchema(BaseModel):
-    code: str
-
 class CentralRateItem(BaseModel):
     code: str
     rate: float
@@ -20,8 +14,6 @@ class MarketRateItem(BaseModel):
     code: str
     rate: float
     timestamp: datetime
-    source: str
-    type: Optional[str]
     delta_percent: Optional[float] = None
     previous_timestamp: Optional[datetime] = None
 
@@ -29,7 +21,6 @@ class FinancialIndexItem(BaseModel):
     code: str
     value: float
     timestamp: datetime
-    source: str
     delta_percent: Optional[float] = None
     previous_timestamp: Optional[datetime] = None
 
@@ -48,7 +39,7 @@ class FinancialIndexTableItem(FinancialIndexItem):
 class TableResponse(BaseModel):
     status: str
     date: date
-    data: List
+    data: List  # hoặc Union[List[CentralRateTableItem], List[MarketRateTableItem], List[FinancialIndexTableItem]]
 
 class ChartSeriesItem(BaseModel):
     date: date
