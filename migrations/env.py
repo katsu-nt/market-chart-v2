@@ -4,61 +4,40 @@ from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool, MetaData
-from sqlalchemy.engine.url import URL
 
 # ensure app package is importable
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from dotenv import load_dotenv
-load_dotenv()
+# load .env
+try:
+    from dotenv import load_dotenv, find_dotenv
+    load_dotenv(find_dotenv())
+except Exception:
+    pass
 
 # Alembic Config object
 config = context.config
 
-# ---- Build DB URL from POSTGRES_* (no DATABASE_URL) ----
-PG_DB = os.getenv("POSTGRES_DB")
-PG_HOST = os.getenv("POSTGRES_HOST")
-PG_PORT = os.getenv("POSTGRES_PORT", "5432")
-PG_USER = os.getenv("POSTGRES_USER")
-PG_PASS = os.getenv("POSTGRES_PASSWORD")
-PG_SSLMODE = os.getenv("POSTGRES_SSLMODE", "require")  # default require for Render
-
-missing = [k for k, v in {
-    "POSTGRES_DB": PG_DB,
-    "POSTGRES_HOST": PG_HOST,
-    "POSTGRES_USER": PG_USER,
-    "POSTGRES_PASSWORD": PG_PASS,
-}.items() if not v]
-
-if missing:
+# --- Lấy DATABASE_URL từ env ---
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
     raise RuntimeError(
-        f"Missing env vars for DB: {', '.join(missing)}. "
-        "Please set them in your environment or .env file."
+        "Missing DATABASE_URL. Please set it in your environment or .env file.\n"
+        "Example: postgresql+psycopg2://user:password@127.0.0.1:5432/market_db?sslmode=disable"
     )
 
-# SQLAlchemy URL (explicit psycopg2 driver)
-db_url = URL.create(
-    drivername="postgresql+psycopg2",
-    username=PG_USER,
-    password=PG_PASS,
-    host=PG_HOST,
-    port=int(PG_PORT),
-    database=PG_DB,
-    query={"sslmode": PG_SSLMODE} if PG_SSLMODE else {},
-)
-
-# Inject into alembic config for both online/offline modes
-config.set_main_option("sqlalchemy.url", str(db_url))
+# Inject URL vào alembic config
+config.set_main_option("sqlalchemy.url", DATABASE_URL)
 
 # Logging config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# --- Import your models' Base metadata ---
+# --- Import models' metadata ---
 from app.models.gold import Base as GoldBase
 from app.models.exchange import Base as ExchangeBase
 
-# Merge metadata from multiple Bases
+# Merge metadata từ nhiều Base
 metadata = MetaData()
 for m in (GoldBase.metadata, ExchangeBase.metadata):
     for t in m.tables.values():
@@ -66,6 +45,15 @@ for m in (GoldBase.metadata, ExchangeBase.metadata):
             t.tometadata(metadata)
 
 target_metadata = metadata
+
+# Debug: In URL (mask password)
+try:
+    from sqlalchemy.engine.url import make_url
+    url_obj = make_url(DATABASE_URL)
+    safe_url = url_obj._replace(password="***")
+    print("Alembic URL ->", safe_url)
+except Exception:
+    pass
 
 
 def run_migrations_offline():
@@ -84,7 +72,7 @@ def run_migrations_offline():
 def run_migrations_online():
     """Run migrations in 'online' mode."""
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section),
+        config.get_section(config.config_ini_section) or {},
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
