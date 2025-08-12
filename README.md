@@ -1,17 +1,7 @@
 # 🟡 Market Backend API
 
-**Market Backend API** là hệ thống backend quản lý giá vàng, tỷ giá ngoại tệ và chỉ số tài chính,  
-xây dựng theo kiến trúc **clean architecture** với FastAPI, SQLAlchemy, Alembic và các công nghệ hiện đại.  
-Hỗ trợ crawler tự động (scheduler), import dữ liệu, migration, RESTful API cho quản trị và frontend.
-
----
-
-## 🚀 TÍNH NĂNG CHÍNH
-
-- Quản lý giá vàng (trong nước, thế giới) theo loại, vùng, thời gian
-- Quản lý tỷ giá trung tâm, thị trường, chỉ số tài chính
-- API thống kê, lấy bảng giá, biểu đồ, chi tiết từng loại, v.v.
-
+- (routers → services → repositories → models) và có middleware xử lý lỗi, CORS, migrations.
+- Schema la DTO cho response
 ---
 
 ## 🛠️ CÀI ĐẶT
