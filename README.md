@@ -23,16 +23,15 @@ Hỗ trợ crawler tự động (scheduler), import dữ liệu, migration, REST
 
 ### 2. **Clone code & tạo môi trường**
 
-git clone <repo_url>
-cd <repo_folder>
-python -m venv venv
-source venv/bin/activate  # Hoặc .\venv\Scripts\activate trên Windows
-pip install -r requirements.txt
+- git clone <repo_url>
+- cd <repo_folder>
+- python -m venv venv
+- source venv/bin/activate  # Hoặc .\venv\Scripts\activate trên Windows
+- pip install -r requirements.txt
  
 ### 3. Tạo file .env
 
 ### 4. Khởi tạo database
-alembic revision --autogenerate -m "init tables"
 alembic upgrade head
 
 ⚡️ CHẠY SERVER
